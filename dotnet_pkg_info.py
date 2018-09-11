@@ -6,6 +6,7 @@ import xml.etree.ElementTree as ET
 import sys
 from . import fileutil
 from . import utillib
+import copy
 import pdb
 
 
@@ -31,6 +32,137 @@ class DotnetPackageInfo:
     SLN_FILES_TAG = 'sln_files'
     PROJ_FILES_TAG = 'proj_files'
 
+    CORE_TARGET_FRAMEWORKS = ['netstandard1.0',
+                              'netstandard1.1',
+                              'netstandard1.2',
+                              'netstandard1.3',
+                              'netstandard1.4',
+                              'netstandard1.5',
+                              'netstandard1.6',
+                              'netstandard2.0',
+                              'netcoreapp1.0',
+                              'netcoreapp1.1',
+                              'netcoreapp2.0',
+                              'netcoreapp2.1',
+                              'uap',
+                              'uap10.0'
+                          ]
+
+    WINDOWS_TARGET_FRAMEWORKS = []
+
+    DOTNET_SRC_FILE_TYPES = {
+        '.cs': {
+            'description' : 'C# source files',
+            'windows_only': False
+        },
+        '.vb' : {
+            'description' : 'Visual Basics source files',
+            "windows_only": True
+        },
+        '.fs' : {
+            'description' : 'F# source files',
+            'windows_only' : True
+        }
+    }
+
+    DOTNET_PROJ_FILE_TYPES = {
+        '.csproj' : {'description' : 'csharp project file'
+        },
+        '.vbproj' : {'description': 'Visual Basics project files'
+        },
+        '.fsproj' : {
+            'description' : 'fsharp project file'
+        }
+    }
+
+    DOTNET_FRAMEWORK_TYPES = {
+      ".NET Standard": {
+          "tf_moniker" : [
+              "netstandard1.0",
+              "netstandard1.1",
+              "netstandard1.2",
+              "netstandard1.3",
+              "netstandard1.4",
+              "netstandard1.5",
+              "netstandard1.6",
+              "netstandard2.0",
+              "netcoreapp1.0",
+              "netcoreapp1.1",
+              "netcoreapp2.0",
+              "netcoreapp2.1"
+          ],
+          "windows_only": False
+       },
+      ".NET Core" : {
+         "tf_moniker" : [
+             "netcoreapp1.0",
+             "netcoreapp1.1",
+             "netcoreapp2.0",
+             "netcoreapp2.1"
+         ],
+         "windows_only": False
+       },
+       ".NET Framework" : {
+         "tf_moniker" : [
+            "net11",
+            "net20",
+            "net35",
+            "net40",
+            "net403",
+            "net45",
+            "net451",
+            "net452",
+            "net46",
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472"
+         ],
+         "windows_only": True
+       },
+       "Windows Store": {
+         "tf_moniker" : [
+            "netcore [netcore45]",
+            "netcore45 [win] [win8]",
+            "netcore451 [win81]"
+         ],
+         "windows_only": True
+       },
+       ".NET Micro Framework": {
+         "tf_moniker" : [
+            "netmf"
+         ],
+         "windows_only": True
+       },
+       "Silverlight": {
+         "tf_moniker" : [
+            "sl4",
+            "sl5"
+         ],
+         "windows_only": True
+       },
+       "Windows Phone": {
+         "tf_moniker" : [
+            "wp [wp7]",
+            "wp7",
+            "wp75",
+            "wp8",
+            "wp81",
+            "wpa81"
+         ],
+         "windows_only": True
+       },
+       "Universal Windows Platform": {
+         "tf_moniker" : [
+            "uap",
+            "uap10.0"
+         ],
+         "windows_only": False
+       }
+    }
+
+
     def __init__(self):
         pass
 
@@ -51,7 +183,7 @@ class DotnetPackageInfo:
             if proj_regex.match(line) != None:
                 yield line
 
-    def get_target_framworks(self, proj_file):
+    def get_target_frameworks(self, proj_file):
 
         if not osp.isfile(proj_file):
             raise FileNotFoundError(proj_file)
@@ -128,7 +260,7 @@ class DotnetPackageInfo:
         for _value in proj_info.values():
             new_dict = dict()
             new_dict['configuration'] = _value['configuration']
-            new_dict['framworks'] = self.get_target_framworks(osp.join(osp.dirname(sln_file), _value['project_file']))
+            new_dict['frameworks'] = self.get_target_frameworks(osp.join(osp.dirname(sln_file), _value['project_file']))
             new_proj_info[_value['project_file']] = new_dict
 
         return new_proj_info
@@ -213,7 +345,7 @@ class DotnetPackageInfo:
                     proj_info = dict()
 
                     for _file in project_files:
-                        proj_info[_file] = { 'frameworks': self.get_target_framworks(_file) }
+                        proj_info[_file] = { 'frameworks': self.get_target_frameworks(_file) }
 
                     pkg_info[DotnetPackageInfo.PROJ_FILES_TAG] = proj_info
                 else:
@@ -231,7 +363,48 @@ class DotnetPackageInfo:
             elif ext in DotnetPackageInfo.PROJECT_EXTENTION:
                 pkg_info[DotnetPackageInfo.PROJ_FILES_TAG] = dict()
                 proj_info = dict()
-                proj_info[pkg] = {'frameworks': self.get_target_framworks(pkg)}
+                proj_info[pkg] = {'frameworks': self.get_target_frameworks(pkg)}
                 pkg_info[DotnetPackageInfo.PROJ_FILES_TAG] = proj_info
+
+        return pkg_info
+
+    def add_defaults(self, pkg_info):
+
+        new_pkg_info = copy.deepcopy(pkg_info)
+
+        if 'proj_files' in pkg_info:
+            for proj in pkg_info['proj_files'].keys():
+
+                if 'frameworks' in pkg_info['proj_files'][proj] and len(pkg_info['proj_files'][proj]['frameworks']) > 0:
+
+                    for tmf in DotnetPackageInfo.CORE_TARGET_FRAMEWORKS:
+                        if tmf in pkg_info['proj_files'][proj]['frameworks']:
+                            new_pkg_info['proj_files'][proj]['default_framework'] = tmf
+                            break
+
+                if 'configuration' in pkg_info['proj_files'][proj] and len(pkg_info['proj_files'][proj]['configuration']) > 0:
+                    if 'Debug' in pkg_info['proj_files'][proj]['configuration']:
+                        new_pkg_info['proj_files'][proj]['default_configuration'] = 'Debug'
+                    else:
+                        new_pkg_info['proj_files'][proj]['default_configuration'] = pkg_info['proj_files'][proj]['configuration'][0]
+
+        return new_pkg_info
+
+    def remove_config(self, pkg_info):
+
+        if 'proj_files' in pkg_info:
+            for proj in pkg_info['proj_files'].keys():
+                if 'configuration' in pkg_info['proj_files'][proj]:
+                    del(pkg_info['proj_files'][proj]['configuration'])
+
+        return pkg_info
+
+    def remove_framework(self, pkg_info):
+        pkg_info = copy.deepcopy(pkg_info)
+
+        if 'proj_files' in pkg_info:
+            for proj in pkg_info['proj_files'].keys():
+                if 'frameworks' in pkg_info['proj_files'][proj]:
+                    del(pkg_info['proj_files'][proj]['frameworks'])
 
         return pkg_info
