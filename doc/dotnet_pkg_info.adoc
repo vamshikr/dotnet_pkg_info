@@ -1,0 +1,440 @@
+== `dotnet_pkg_info` Tool
+:numbered:
+
+=== Introduction
+
+Microsoft _dotnet core_ is a cross-platform framework that can be used to build ASP.NET Core web applications, command-line applications, libraries, and universal windows platform applications. The dotnet applications are written in _C#, F#, or Visual Basic_ programming languages. Dotnet applications mainly use https://docs.microsoft.com/en-us/visualstudio/msbuild/msbuild-reference[MSBuild] as the build system. The _MSBuild_ files, commonly referred as _project files_ adhere to https://docs.microsoft.com/en-us/visualstudio/msbuild/msbuild-project-file-schema-reference[MSBuild XML schema]. These _project files_ end with extensions `.csproj`, `.vbproj` or `.fsproj`. Dotnet packages that use _Microsoft Visual Studios_ for development have a https://docs.microsoft.com/en-us/visualstudio/extensibility/internals/solution-dot-sln-file[Visual Studios Solutions] file (`.sln` extension) in the package root directories.  A visual studios _solutions file_ for a package is a text file that lists modules (sub-projects) along with information such as _project_ file paths and _build configurations_ (`Debug` or `Release`).
+
+Given a _dotnet_ package, `dotnet_pkg_info` is a _command line_ tool that obtains information relevant to SWAMP about the package. The tool is intended to be used by SWAMP UI team to help users add dotnet packages to SWAMP. Code from `dotnet_pkg_info` tool will also be used in the SWAMP backend to get information about the package during the build.
+
+// `dotnet_pkg_info` tool has _command line options_ to generate output in `json` and `text` format.
+
+List of functionality of `dotnet_pkg_info`
+
+. List _Visual Studios Solution Files_, _Project Files_, _Target Frameworks_ and _Build Configuration_ in a given package
+. Show common Dotnet _File Type Extensions_
+. Show _Target Frameworks_ on a SWAMP platform
+
+=== List _Visual Studios Solution Files_, _Project Files_, _Target Frameworks_ and _Build Configuration_ in a given package.
+
+Given the path to an unarchived package as an argument, The `dotnet_pkg_info` tool, starting in the project root directory (this is selected by the user), recursively looks for files with `.sln` extension . The files with `.sln` extension are  https://docs.microsoft.com/en-us/visualstudio/extensibility/internals/solution-dot-sln-file?view=vs-2017[Visual Studios Solution Files]. These solutions files are text based files that contain paths to https://docs.microsoft.com/en-us/dotnet/core/tools/project-json-to-csproj[Dotnet Project Files] along with information such as build configurations (`Debug`, `Release`) for each of the modules. The argument can also be the path to a _solution_ file or a _project_ file.
+
+dotnet echo system lets packages to use APIs that are platform specific. Example: A _GUI_ application for Windows platform requires APIs only available on Windows. In dotnet echo system this is referred as _targeting a framework_. When an application targets a particular framework or a set of frameworks, the _project_ file for that application must define `TargetFramework` or `TargetFrameworks` attribute whose values are one or more `Target Framework Moniker (TFM)` in <<table-1,Table 1>>.
+
+[[table-1]]
+.Valid Target Framework and Target Framework Moniker:
+[width="80%",cols="l,l,d",options="header",style="literal"]
+|==========================
+| Target Framework |	Target Framework Moniker | Windows Only
+| .NET Standard	|netstandard1.0
+netstandard1.1
+netstandard1.2
+netstandard1.3
+netstandard1.4
+netstandard1.5
+netstandard1.6
+netstandard2.0 | False
+| .NET Core	|netcoreapp1.0
+netcoreapp1.1
+netcoreapp2.0
+netcoreapp2.1 |  False
+| .NET Framework	|net11
+net20
+net35
+net40
+net403
+net45
+net451
+net452
+net46
+net461
+net462
+net47
+net471
+net472 |  True
+|Windows Store	|netcore [netcore45]
+netcore45 [win] [win8]
+netcore451 [win81] |  True
+| .NET Micro Framework	|netmf |  True
+| Silverlight	|sl4
+sl5 | True
+| Windows Phone	|wp [wp7]
+wp7
+wp75
+wp8
+wp81
+wpa81 | True
+| Universal Windows Platform	|uap [uap10.0]
+uap10.0 [win10] [netcore50] | False
+|==========================
+
+This list may be changing. Please refer to [https://docs.microsoft.com/en-us/dotnet/standard/frameworks] for an update list.
+
+To get SWAMP related information about a package, execute `dotnet_pkg_info` with `--package` option. By default, `dotnet_pkg_info` displays all the _solutions files_ in the package. For each of the _solution files_, it lists the _project files_. And for each of the _project files_, the provided _target frameworks_ and _build configurations_. The options and arguments for `dotnet_pkg_info` are listed in <<dotnet-pkg-info-options,Table-2>>
+
+[[dotnet-pkg-info-options]]
+.dotnet_pkg_info Options and Arguments:
+[width="80%",cols="l,d",options="header",style="literal"]
+|==========================
+| Option |	Description
+| --no-config | Do not display configuration information
+| --no-framework | Do not display target framework information
+| --format | `text` or `json`. Default is `json`
+| --package | Path to the package directory or a solution file or a project file
+| --src-file-types | list of dotnet source file extensions
+| --framework-types | list of frameworks available on
+| --proj-file-types | list of dotnet msbuild project file extensions
+|==========================
+
+NOTE: Options `--package`, `--src-file-types`, `--framework-types` and `--proj-file-types` are mutually exclusive. The tool only accept one of them at a time.
+
+.Example
+```
+% dotnet_pkg_info --package './Identity-2.0.1'
+```
+
+.Output
+```
+{
+  "sln_files": {
+        "Identity.sln": [
+          "src/Microsoft.AspNetCore.Identity/Microsoft.AspNetCore.Identity.csproj",
+          "src/Microsoft.Extensions.Identity.Core/Microsoft.Extensions.Identity.Core.csproj"
+        ],
+        "IdentityCore.sln": [
+          "src/Microsoft.AspNetCore.Identity/Microsoft.AspNetCore.Identity.csproj",
+          "src/Microsoft.Extensions.Identity.Core/Microsoft.Extensions.Identity.Core.csproj",
+          "src/Microsoft.Extensions.Identity.Stores/Microsoft.Extensions.Identity.Stores.csproj"
+        ]
+    },
+  "proj_files": {        "src/Microsoft.AspNetCore.Identity/Microsoft.AspNetCore.Identity.csproj": {
+        "frameworks": ["netcoreapp2.0", "net461"],
+        "configuration": ["Debug", "Release"],
+        "default_framework": "netcoreapp2.0",
+        "default_configuration": "Debug"
+     },
+     "src/Microsoft.Extensions.Identity.Core/Microsoft.Extensions.Identity.Core.csproj": {
+        "frameworks": ["netstandard2.0"],
+        "configuration": ["Debug", "Release"],
+        "default_framework": "netstandard2.0",
+        "default_configuration": "Debug"
+    },
+    "src/Microsoft.Extensions.Identity.Stores/Microsoft.Extensions.Identity.Stores.csproj": {
+        "frameworks": ["netstandard2.0"],
+        "configuration": ["Debug", "Release"],
+        "default_framework": "netstandard2.0",
+        "default_configuration": "Debug"
+    }
+  }
+}
+```
+
+.Example with Text Output:
+
+```
+% dotnet_pkg_info --format text --package './Identity-2.0.1'
+```
+
+.Output
+```
+sln_files:
+  Identity.sln
+    src/Microsoft.AspNetCore.Identity/Microsoft.AspNetCore.Identity.csproj
+    src/Microsoft.Extensions.Identity.Core/Microsoft.Extensions.Identity.Core.csproj
+    IdentityCore.sln
+      src/Microsoft.AspNetCore.Identity/Microsoft.AspNetCore.Identity.csproj
+      src/Microsoft.Extensions.Identity.Core/Microsoft.Extensions.Identity.Core.csproj
+      src/Microsoft.Extensions.Identity.Stores/Microsoft.Extensions.Identity.Stores.csproj
+proj_files:
+    src/Microsoft.AspNetCore.Identity/Microsoft.AspNetCore.Identity.csproj
+      frameworks:
+        netcoreapp2.0
+        net461
+      configuration:
+        Debug
+        Release
+      default_framework:
+        netcoreapp2.0
+      default_configuration:
+        Debug
+    src/Microsoft.Extensions.Identity.Core/Microsoft.Extensions.Identity.Core.csproj
+      frameworks:
+        netstandard2.0
+      configuration:
+        Debug
+        Release
+      default_framework:
+        netstandard2.0
+      default_configuration:
+        Debug
+    src/Microsoft.Extensions.Identity.Stores/Microsoft.Extensions.Identity.Stores.csproj
+      frameworks:
+        netstandard2.0
+      configuration:
+        Debug
+        Release
+      default_framework:
+        netstandard2.0
+      default_configuration:
+        Debug
+```
+
+NOTE: To get package information without _Build Configuration_ and _Target Framework_ information, use `--no-config` and `--no-framework` option to the `dotnet_pkg_info` command.
+
+==== For packages without solution files
+
+If a package does not have a _solution file_ in the package root directory, the tool recursively searches the package for _project files_. It lists the  _project files_ along with _target frameworks_ mentioned in the _project files_. Note that _build configuration_ information won't be available in this case as _build configuration_ is provided in the _solution files_.
+
+=== Target Frameworks on SWAMP platforms
+
+To display _target frameworks_ available on a SWAMP platform, use '--framework-types' option with `dotnet_pkg_info` tool.
+
+.Example
+```
+dotnet_pkg_info --framework-types
+```
+
+Output
+```
+{
+  ".NET Standard": {
+      "tf_moniker" : [
+          "netstandard1.0",
+          "netstandard1.1",
+          "netstandard1.2",
+          "netstandard1.3",
+          "netstandard1.4",
+          "netstandard1.5",
+          "netstandard1.6",
+          "netstandard2.0",
+          "netcoreapp1.0",
+          "netcoreapp1.1",
+          "netcoreapp2.0",
+          "netcoreapp2.1"
+      ],
+      "windows_only": false
+   },
+  ".NET Core" : {
+     "tf_moniker" : [
+         "netcoreapp1.0",
+         "netcoreapp1.1",
+         "netcoreapp2.0",
+         "netcoreapp2.1"
+     ],
+     "windows_only": false
+   },
+   ".NET Framework" : {
+     "tf_moniker" : [
+        "net11",
+        "net20",
+        "net35",
+        "net40",
+        "net403",
+        "net45",
+        "net451",
+        "net452",
+        "net46",
+        "net461",
+        "net462",
+        "net47",
+        "net471",
+        "net472"
+     ],
+     "windows_only": true
+   },
+   "Windows Store": {
+     "tf_moniker" : [
+        "netcore [netcore45]",
+        "netcore45 [win] [win8]",
+        "netcore451 [win81]"
+     ],
+     "windows_only": true
+   },
+   ".NET Micro Framework": {
+     "tf_moniker" : [
+        "netmf"
+     ],
+     "windows_only": true
+   },
+   "Silverlight": {
+     "tf_moniker" : [
+        "sl4",
+        "sl5"
+     ],
+     "windows_only": true
+   },
+   "Windows Phone": {
+     "tf_moniker" : [
+        "wp [wp7]",
+        "wp7",
+        "wp75",
+        "wp8",
+        "wp81",
+        "wpa81"
+     ],
+     "windows_only": true
+   },
+   "Universal Windows Platform": {
+     "tf_moniker" : [
+        "uap",
+        "uap10.0"
+     ],
+     "windows_only": false
+   }
+}
+```
+
+=== Show Dotnet File Extensions
+
+Lists the dotnet file types extensions
+
+.Example
+```
+% dotnet_pkg_info --src-file-types
+```
+
+Output
+```
+{
+  ".cs": {
+    "description": "C# source files",
+    "windows_only": false
+  },
+  ".vb": {
+    "description": "Visual Basics source files",
+    "windows_only": true
+  },
+  ".fs": {
+    "description": "F# source files",
+    "windows_only": true
+  }
+}
+```
+
+=== Show Dotnet Project File Extensions
+
+Lists the dotnet project file extensions
+
+```
+% dotnet_pkg_info --project-file-types
+```
+
+Output
+```
+{
+  ".csproj": {
+    "description": "csharp project file"
+  },
+  ".vbproj": {
+    "description": "Visual Basics project files"
+  },
+  ".fsproj": {
+  "description": "fsharp project file"
+  }
+}
+```
+
+=== Package info to the backend
+If a user selects a _solutions_ file, or a certain set of _project_ files and _target_ frameworks and _build configuration for their package. The SWAMP UI or middleware should pass that information to the backend in a seperate `json` file. The file should be added to the assessment VM input disk. The name of the `json` file should be the value of the attribute `package-dotnet-info-file`.
+
+The format for the file should be:
+```
+{
+    "<path to the solution file >": {
+      "<project file 1>": {
+        "frameworks": "<framework tmf>",
+        "configuration": "<configuration name>"
+      },
+      "<project file 2>": {
+        "frameworks": "<framework tmf>",
+        "configuration": "<configuration name>"
+      }
+      ...
+  }
+}
+```
+
+Example:
+
+```
+{
+    "Identity.sln": {
+      "src/Microsoft.AspNetCore.Identity/Microsoft.AspNetCore.Identity.csproj": {
+        "frameworks": "netcoreapp2.0",
+        "configuration": "Debug"
+      },
+      "src/Microsoft.Extensions.Identity.Core/Microsoft.Extensions.Identity.Core.csproj": {
+        "frameworks": "netstandard2.0",
+        "configuration": "Debug"
+      },
+      "src/Microsoft.Extensions.Identity.Stores/Microsoft.Extensions.Identity.Stores.csproj": {
+        "frameworks": "netstandard2.0",
+        "configuration": "Release"
+      }
+  }
+}
+```
+
+If the user does not select projects, frameworks and configuration:
+
+```
+{
+    "<path to the solution file >": {
+  }
+}
+```
+
+Example:
+
+```
+{
+    "Identity.sln": {
+      "src/Microsoft.AspNetCore.Identity/Microsoft.AspNetCore.Identity.csproj": {
+        "frameworks": "netcoreapp2.0",
+        "configuration": "Debug"
+      },
+      "src/Microsoft.Extensions.Identity.Core/Microsoft.Extensions.Identity.Core.csproj": {
+        "frameworks": "netstandard2.0",
+        "configuration": "Debug"
+      },
+      "src/Microsoft.Extensions.Identity.Stores/Microsoft.Extensions.Identity.Stores.csproj": {
+        "frameworks": "netstandard2.0",
+        "configuration": "Release"
+      }
+  }
+}
+```
+
+If a package does not have a solution file, the format for the file should be:
+```
+{
+    "<project file 1>": {
+      "frameworks": "<framework tmf>",
+      "configuration": "<configuration name>"
+    },
+    "<project file 2>": {
+      "frameworks": "<framework tmf>",
+      "configuration": "<configuration name>"
+    }
+    ...
+}
+```
+
+Example:
+
+```
+{
+    "src/Microsoft.AspNetCore.Identity/Microsoft.AspNetCore.Identity.csproj": {
+      "frameworks": "netcoreapp2.0",
+      "configuration": "Debug"
+    },
+    "src/Microsoft.Extensions.Identity.Core/Microsoft.Extensions.Identity.Core.csproj": {
+      "frameworks": "netstandard2.0",
+      "configuration": "Debug"
+    },
+    "src/Microsoft.Extensions.Identity.Stores/Microsoft.Extensions.Identity.Stores.csproj": {
+      "frameworks": "netstandard2.0",
+      "configuration": "Release"
+    }
+}
+```

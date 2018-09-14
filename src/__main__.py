@@ -1,7 +1,7 @@
+
 import sys
-import pprint
 import argparse
-from .dotnet_pkg_info import DotnetPackageInfo
+from dotnet_pkg_info.dotnet_pkg_info import DotnetPackageInfo
 import json
 
 
@@ -69,6 +69,9 @@ def pretty_print(pkg_info, indent=4):
         if tag == DotnetPackageInfo.SLN_FILES_TAG:
             for sln_file in pkg_info[DotnetPackageInfo.SLN_FILES_TAG].keys():
                 pprint(curr_indent, sln_file)
+                next_indent = curr_indent + 4
+                for proj_file in pkg_info[DotnetPackageInfo.SLN_FILES_TAG][sln_file]:
+                    pprint(next_indent, proj_file)
         else:
             for proj_file in pkg_info[DotnetPackageInfo.PROJ_FILES_TAG].keys():
                 pprint(curr_indent, proj_file)
@@ -90,8 +93,6 @@ def pretty_print(pkg_info, indent=4):
 if __name__ == '__main__':
     parser = process_cli_args()
     args = vars(parser)
-
-    print(args)
 
     if args['package']:
         dpi = DotnetPackageInfo()
