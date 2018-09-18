@@ -1,18 +1,19 @@
 = Dotnet Package information
 :numbered:
 
+This document describes the `dotnet_pkg_info` tool and how to include the .NET package build settings in the SWAMP assessment framework's `package.conf` file.
+
 == `dotnet_pkg_info` Tool
 
 === Introduction
-This document describes the `dotnet_pkg_info` tool and how to include the .NET package attributes in the SWAMP assessment framework's `package.conf` file.
 
 Microsoft _.NET core_ is a cross-platform framework that can be used to build ASP.NET Core web applications, command-line applications, libraries, and universal windows platform applications. The .NET applications are written in _C#, F#, or Visual Basic_ programming languages. The .NET applications typically use https://docs.com/en-us/visualstudio/msbuild/msbuild-reference[MSBuild] as the build system. The _MSBuild_ files, commonly referred to as _project files_ adhere to https://docs.com/en-us/visualstudio/msbuild/msbuild-project-file-schema-reference[MSBuild XML schema]. These _project files_ end with extensions `.csproj`, `.vbproj` or `.fsproj`. .NET packages that use _Microsoft Visual Studios_ for development have one or more https://docs.com/en-us/visualstudio/extensibility/internals/solution-dot-sln-file[Visual Studios Solution] file (`.sln` extension) in their package directories.  A visual studios _solution_ files for a package is a text file that has information such as _project_ file paths and _build configurations_ (`Debug` or `Release`) for the modules in the project.
 
-The `dotnet_pkg_info`, command line tool returns relevant information about a .NET package in a `json` or `text` format. The `dotnet_pkg_info` tool is intended to be used by SWAMP UI team to help users add .NET packages to SWAMP. Code from `dotnet_pkg_info` tool is also be used in the SWAMP backend to get information about the package during the build.
+The `dotnet_pkg_info`, command line tool returns build settings about a .NET package in a `json` or `text` format. The `dotnet_pkg_info` tool is intended to be used by SWAMP UI team to help users add .NET packages to SWAMP. Code from `dotnet_pkg_info` tool is also be used in the SWAMP assessment to get build settings of a package during the build.
 
 // `dotnet_pkg_info` tool has _command line options_ to generate output in `json` and `text` format.
 
-List of functionality of `dotnet_pkg_info`
+Functionality of `dotnet_pkg_info`:
 
 . List _Visual Studios Solution Files_, _Project Files_, _Target Frameworks_ and _Build Configuration_ in a package
 . List common .NET _File Type Extensions_ and related data
@@ -21,11 +22,11 @@ List of functionality of `dotnet_pkg_info`
 [[package-info]]
 === List _Visual Studios Solution Files_, _Project Files_, _Target Frameworks_ and _Build Configuration_ in a package.
 
-The main function of `dotnet_pkg_info` is to provide build characteristics of a package in a `json` or `text` format. It does this when it is given arguments that are paths to a https://docs.com/en-us/visualstudio/extensibility/internals/solution-dot-sln-file?view=vs-2017[Visual Studios Solution File] (file with `.sln` extension), a .NET  https://docs.com/en-us/dotnet/core/tools/project-json-to-csproj[Project File] or a directory (recursively searched for solution or project files).
+The main function of `dotnet_pkg_info` is to get build settings of a package in a `json` or `text` format. It does this when it is given arguments that are paths to https://docs.com/en-us/visualstudio/extensibility/internals/solution-dot-sln-file?view=vs-2017[Visual Studios Solution Files] (file with `.sln` extension), .NET  https://docs.com/en-us/dotnet/core/tools/project-json-to-csproj[Project Files] or a directories (recursively searched for solution or project files).
 
 The .NET ecosystem lets packages to build against different libraries and APIs, some of these may only be available on Windows. In the .NET ecosystem this is referred as _targeting a framework_. When an application targets a particular framework or a set of frameworks, the _project_ file for that application must define `TargetFramework` or `TargetFrameworks` attribute whose values are one or more _Target Framework Moniker (TFM)_, see <<appendix-a, Appendix A>> for the current list.
 
-To get SWAMP related information about a package, execute `dotnet_pkg_info` with the path to a package directory or a solution file or a project file as an argument. If the argument is a package directory, `dotnet_pkg_info` recursively searches for _solution_ files in the package. For each of the _solution files_, it lists the _project files_. And for each of the _project files_, `dotnet_pkg_info` list the provided _target frameworks_ and _build configurations_. The options and arguments for `dotnet_pkg_info` are listed in the table <<dotnet-pkg-info-options>>
+To get build settings of a package, execute `dotnet_pkg_info` with the path to a package directory or a solution file or a project file as an argument. If the argument is a package directory, `dotnet_pkg_info` recursively searches for _solution_ files in the package. For each of the _solution files_, it lists the _project files_. And for each of the _project files_, `dotnet_pkg_info` list the provided _target frameworks_ and _build configurations_. The options and arguments for `dotnet_pkg_info` are listed in the table <<dotnet-pkg-info-options>>
 
 [[dotnet-pkg-info-options]]
 .dotnet_pkg_info Options and Arguments:
@@ -36,7 +37,7 @@ To get SWAMP related information about a package, execute `dotnet_pkg_info` with
 | --format FORMAT | the values `text` or `json`. Default is `json`
 | --no-config | Do not display configuration information
 | --no-framework | Do not display target framework information
-| --validate PKG_INFO | Validates the package information (PKG_INFO) provided as a `json` string. This option requires PACKAGE argument.
+| --build-settings PKG_INFO | Validates the package information (PKG_INFO) provided as a `json` string, combines the PKG_INFO with results from reading PACKAGE information.
 | --src-file-types | list of .NET source file extensions
 | --framework-types | list of frameworks available on
 | --proj-file-types | list of .NET msbuild project file extensions
@@ -66,22 +67,26 @@ To get SWAMP related information about a package, execute `dotnet_pkg_info` with
   "proj_files": {
     "src/AspNetCore.Identity/AspNetCore.Identity.csproj": {
       "frameworks": ["netcoreapp2.0", "net461"],
-      "configuration": ["Debug", "Release"],
+      "configurations": ["Debug", "Release"],
       "default_framework": "netcoreapp2.0",
       "default_configuration": "Debug"
     },
     "src/Extensions.Identity.Core/Extensions.Identity.Core.csproj": {
       "frameworks": ["netstandard2.0"],
-      "configuration": ["Debug", "Release"],
+      "configurations": ["Debug", "Release"],
       "default_framework": "netstandard2.0",
       "default_configuration": "Debug"
     },
     "src/Extensions.Identity.Stores/Extensions.Identity.Stores.csproj": {
       "frameworks": ["netstandard2.0"],
-      "configuration": ["Debug", "Release"],
+      "configurations": ["Debug", "Release"],
       "default_framework": "netstandard2.0",
       "default_configuration": "Debug"
     }
+  },
+  "errors": {
+  },
+  "warnings:" {
   }
 }
 ```
@@ -107,7 +112,7 @@ proj_files:
     frameworks:
       netcoreapp2.0
       net461
-    configuration:
+    configurations:
       Debug
       Release
     default_framework:
@@ -117,7 +122,7 @@ proj_files:
   src/Extensions.Identity.Core/Extensions.Identity.Core.csproj
     frameworks:
       netstandard2.0
-    configuration:
+    configurations:
       Debug
       Release
     default_framework:
@@ -127,13 +132,15 @@ proj_files:
   src/Extensions.Identity.Stores/Extensions.Identity.Stores.csproj
     frameworks:
       netstandard2.0
-    configuration:
+    configurations:
       Debug
       Release
     default_framework:
       netstandard2.0
     default_configuration:
       Debug
+errors:
+warnings:
 ```
 
 NOTE: To get package information without _Build Configuration_ and _Target Framework_ information, use `--no-config` and `--no-framework` option to the `dotnet_pkg_info` command.
@@ -166,19 +173,92 @@ If a package does not have a _solution file_ any where in the package  directory
       "frameworks": ["netstandard2.0"],
       "default_framework": "netstandard2.0",
     }
+  },
+  "errors": {
+  },
+  "warnings:" {
   }
 }
 ```
 
-=== Validate Package Information
+=== Validate and Merge the Package information
 
 If there is existing .NET build data (see section <<package-info>>), then that same data can be passed as an option to both verify if the data is still valid and to populate the resulting data with these values. This can be used to populate the selection in the UI displayed to the users to set current values.
 
-Given package information in `json` format, the `--validate` option with the `dotnet_pkg_info` tool verifies that the package information is correct or not for a given package. i.e if the given _solution_ and _project_ files are present in the package, _target frameworks_ and _build configuration_ are still valid for the project files.
+Given package information in `json` format, the `--build-settings` option with the `dotnet_pkg_info` tool verifies that the package information is correct or not for a given package. i.e if the given _solution_ and _project_ files are present in the package, _target frameworks_ and _build configuration_ are still valid for the project files. It merges the `json` results with the actually reading the package information
 
-The `--validate` option for the `dotnet_pkg_info` tool takes a `json` string with package information in the format specified in <<package-info, section-2>> of this document and a path to a package directory or a _solution_ file or a _project_ file as an argument.
+The `--build-settings` option for the `dotnet_pkg_info` tool takes a `json` string with package information in the format specified in <<package-info, section-2>> of this document and a path to a package directory or a _solution_ file or a _project_ file as an argument.
 
 The command returns an error if any _solution_ or _project_ files, or any `framework` or `configuration` attributes in the provided `PKG_INFO_FILE` file are not present in the `PACKAGE`. The format for the error message will as described in the <<exit-codes,section-1.7>>
+
+.Example:
+
+```
+dotnet_pkg_info ./Identity-2.0.1 --build-settings '{
+  "sln_files": {
+    "Identity.sln": [
+      "src/AspNetCore.Identity/AspNetCore.Identity.csproj",
+      "src/Extensions.Identity.Core/Extensions.Identity.Core.csproj"
+    ],
+  },
+  "proj_files": {
+    "src/AspNetCore.Identity/AspNetCore.Identity.csproj": {
+      "framework": "netcoreapp2.0",
+      "configuration": "Debug",
+    },
+    "src/Extensions.Identity.Core/Extensions.Identity.Core.csproj": {
+      "framework": "netstandard2.0",
+      "configuration": "Debug"
+    },
+  }
+}'
+```
+
+.Output
+[%autofit]
+```
+{
+  "sln_files": {
+    "Identity.sln": [
+      "src/AspNetCore.Identity/AspNetCore.Identity.csproj",
+      "src/Extensions.Identity.Core/Extensions.Identity.Core.csproj"
+    ],
+    "IdentityCore.sln": [
+      "src/AspNetCore.Identity/AspNetCore.Identity.csproj",
+      "src/Extensions.Identity.Core/Extensions.Identity.Core.csproj",
+      "src/Extensions.Identity.Stores/Extensions.Identity.Stores.csproj"
+    ]
+  },
+  "proj_files": {
+    "src/AspNetCore.Identity/AspNetCore.Identity.csproj": {
+      "frameworks": ["netcoreapp2.0", "net461"],
+      "configurations": ["Debug", "Release"],
+      "default_framework": "netcoreapp2.0",
+      "default_configuration": "Debug",
+      "framework": "netcoreapp2.0",
+      "configuration": "Debug",
+    },
+    "src/Extensions.Identity.Core/Extensions.Identity.Core.csproj": {
+      "frameworks": ["netstandard2.0"],
+      "configurations": ["Debug", "Release"],
+      "default_framework": "netstandard2.0",
+      "default_configuration": "Debug",
+      "framework": "netstandard2.0",
+      "configuration": "Debug"
+    },
+    "src/Extensions.Identity.Stores/Extensions.Identity.Stores.csproj": {
+      "frameworks": ["netstandard2.0"],
+      "configurations": ["Debug", "Release"],
+      "default_framework": "netstandard2.0",
+      "default_configuration": "Debug"
+    }
+  },
+  "errors": {
+  },
+  "warnings:" {
+  }
+}
+```
 
 
 === Target Frameworks
@@ -331,6 +411,8 @@ Output
 ```
 
 [[exit-codes]]
+=== Errors and Warnings
+
 === Error Messages and Exit Status returned by `dotnet_pkg_info`
 
 Incase `dotnet_pkg_info` encounters errors while returning package information or validating a given package information, it returns a `json` data structure that contains one or more errors, each with an _error message_, _error code_, and the _file_ that is cause of the error. The _error message_ format and _error codes_ are given the table <<dotnet-pkg-info-exit-codes>>.
@@ -340,8 +422,8 @@ The format for the `json` data structure is as follows:
 {
   errors: [
     {
-      "error_message": "<message description>",
-      "error_code" : "<error code>"
+      "message": "<message description>",
+      "code" : "<error code>"
       "file" : "<path to the file that is the cause of the error"
     },
     {
@@ -367,6 +449,28 @@ The format for the `json` data structure is as follows:
 | INVALID_FILE_EXTENSION | 7 | Invalid .NET file extension: <path> | Invalid .NET file extension
 | FILE_PERMISSION_ERROR | 8 | File Permission error |  If solution, project or directory does not have read permission
 |==========================
+
+=== Warnings Messages returned by `dotnet_pkg_info`
+
+If `dotnet_pkg_info` determines if a _project_ in a package only can be built on Windows, it returns a warning with the code 'BUILDS_ON_WINDOWS'. For now, their is only one warning reported by the `dotnet_pkg_info` tool.
+
+The format for the `json` data structure is as follows:
+```
+{
+  warnings: [
+    {
+      "message": "<message description>",
+      "code" : "<warning code>"
+      "file" : "<path to the file that is the cause of the error"
+    },
+    {
+      ...
+    },
+    ...
+  ]
+}
+```
+
 
 [[package-info]]
 == Package info to the backend
