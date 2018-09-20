@@ -3,11 +3,8 @@ import subprocess
 import os.path as osp
 import re
 import xml.etree.ElementTree as ET
-import sys
 from . import fileutil
-from . import utillib
 import copy
-import pdb
 
 
 def get_cmd_output(cmd, cwd=None):
