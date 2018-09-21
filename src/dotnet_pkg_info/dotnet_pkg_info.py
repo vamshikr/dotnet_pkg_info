@@ -49,32 +49,34 @@ class DotnetPackageInfo:
 
     DOTNET_SRC_FILE_TYPES = {
         '.cs': {
-            'description' : 'C# source files',
+            'description': 'C# source files',
             'windows_only': False
         },
-        '.vb' : {
-            'description' : 'Visual Basics source files',
+        '.vb': {
+            'description': 'Visual Basics source files',
             "windows_only": True
         },
-        '.fs' : {
-            'description' : 'F# source files',
-            'windows_only' : True
+        '.fs': {
+            'description': 'F# source files',
+            'windows_only': True
         }
     }
 
     DOTNET_PROJ_FILE_TYPES = {
-        '.csproj' : {'description' : 'csharp project file'
+        '.csproj': {
+            'description': 'csharp project file'
         },
-        '.vbproj' : {'description': 'Visual Basics project files'
+        '.vbproj': {
+            'description': 'Visual Basics project files'
         },
-        '.fsproj' : {
-            'description' : 'fsharp project file'
+        '.fsproj': {
+            'description': 'fsharp project file'
         }
     }
 
     DOTNET_FRAMEWORK_TYPES = {
       ".NET Standard": {
-          "tf_moniker" : [
+          "tf_moniker": [
               "netstandard1.0",
               "netstandard1.1",
               "netstandard1.2",
@@ -90,8 +92,8 @@ class DotnetPackageInfo:
           ],
           "windows_only": False
        },
-      ".NET Core" : {
-         "tf_moniker" : [
+      ".NET Core": {
+         "tf_moniker": [
              "netcoreapp1.0",
              "netcoreapp1.1",
              "netcoreapp2.0",
@@ -99,8 +101,8 @@ class DotnetPackageInfo:
          ],
          "windows_only": False
        },
-       ".NET Framework" : {
-         "tf_moniker" : [
+       ".NET Framework": {
+         "tf_moniker": [
             "net11",
             "net20",
             "net35",
@@ -119,7 +121,7 @@ class DotnetPackageInfo:
          "windows_only": True
        },
        "Windows Store": {
-         "tf_moniker" : [
+         "tf_moniker": [
             "netcore [netcore45]",
             "netcore45 [win] [win8]",
             "netcore451 [win81]"
@@ -127,20 +129,20 @@ class DotnetPackageInfo:
          "windows_only": True
        },
        ".NET Micro Framework": {
-         "tf_moniker" : [
+         "tf_moniker": [
             "netmf"
          ],
          "windows_only": True
        },
        "Silverlight": {
-         "tf_moniker" : [
+         "tf_moniker": [
             "sl4",
             "sl5"
          ],
          "windows_only": True
        },
        "Windows Phone": {
-         "tf_moniker" : [
+         "tf_moniker": [
             "wp [wp7]",
             "wp7",
             "wp75",
@@ -151,7 +153,7 @@ class DotnetPackageInfo:
          "windows_only": True
        },
        "Universal Windows Platform": {
-         "tf_moniker" : [
+         "tf_moniker": [
             "uap",
             "uap10.0"
          ],
@@ -239,7 +241,7 @@ class DotnetPackageInfo:
 
             if match:
                 proj_info[match.groupdict()['project_hash']] = {'project_file': match.groupdict()['project_file'].replace("\\", "/"),
-                                                                'configuration': list()
+                                                                'configurations': list()
                                                                 }
 
         proj_config_plat = self.get_project_config_plat(sln_file)
@@ -250,13 +252,13 @@ class DotnetPackageInfo:
             if match:
                 _hash = match.groupdict()['project_hash']
                 if _hash in proj_info.keys():
-                    proj_info[_hash]['configuration'].append(match.groupdict()['configuration'])
+                    proj_info[_hash]['configurations'].append(match.groupdict()['configuration'])
 
         new_proj_info = dict()
 
         for _value in proj_info.values():
             new_dict = dict()
-            new_dict['configuration'] = _value['configuration']
+            new_dict['configurations'] = _value['configurations']
             new_dict['frameworks'] = self.get_target_frameworks(osp.join(osp.dirname(sln_file), _value['project_file']))
             new_proj_info[_value['project_file']] = new_dict
 
@@ -319,6 +321,8 @@ class DotnetPackageInfo:
         '''
 
         pkg_info = dict()
+        pkg_info['errors'] = list()
+        pkg_info['warnings'] = list()
 
         if not self.is_valid(pkg):
             raise NotADotnetPackageError(pkg)
@@ -332,7 +336,7 @@ class DotnetPackageInfo:
 
                 for _file in sln_files:
                     sln_info = self.solution_info(_file)
-                    pkg_info[DotnetPackageInfo.SLN_FILES_TAG][_file] = list(sln_info.keys())
+                    pkg_info[DotnetPackageInfo.SLN_FILES_TAG][osp.relpath(_file, pkg)] = list(sln_info.keys())
                     pkg_info[DotnetPackageInfo.PROJ_FILES_TAG].update(sln_info)
 
             else:
@@ -342,7 +346,7 @@ class DotnetPackageInfo:
                     proj_info = dict()
 
                     for _file in project_files:
-                        proj_info[_file] = { 'frameworks': self.get_target_frameworks(_file) }
+                        proj_info[_file] = {'frameworks': self.get_target_frameworks(_file)}
 
                     pkg_info[DotnetPackageInfo.PROJ_FILES_TAG] = proj_info
                 else:
@@ -379,11 +383,11 @@ class DotnetPackageInfo:
                             new_pkg_info['proj_files'][proj]['default_framework'] = tmf
                             break
 
-                if 'configuration' in pkg_info['proj_files'][proj] and len(pkg_info['proj_files'][proj]['configuration']) > 0:
-                    if 'Debug' in pkg_info['proj_files'][proj]['configuration']:
+                if 'configurations' in pkg_info['proj_files'][proj] and len(pkg_info['proj_files'][proj]['configurations']) > 0:
+                    if 'Debug' in pkg_info['proj_files'][proj]['configurations']:
                         new_pkg_info['proj_files'][proj]['default_configuration'] = 'Debug'
                     else:
-                        new_pkg_info['proj_files'][proj]['default_configuration'] = pkg_info['proj_files'][proj]['configuration'][0]
+                        new_pkg_info['proj_files'][proj]['default_configuration'] = pkg_info['proj_files'][proj]['configurations'][0]
 
         return new_pkg_info
 
@@ -391,8 +395,8 @@ class DotnetPackageInfo:
 
         if 'proj_files' in pkg_info:
             for proj in pkg_info['proj_files'].keys():
-                if 'configuration' in pkg_info['proj_files'][proj]:
-                    del(pkg_info['proj_files'][proj]['configuration'])
+                if 'configurations' in pkg_info['proj_files'][proj]:
+                    del(pkg_info['proj_files'][proj]['configurations'])
 
         return pkg_info
 

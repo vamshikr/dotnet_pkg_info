@@ -2,14 +2,17 @@
 import sys
 import argparse
 from dotnet_pkg_info.dotnet_pkg_info import DotnetPackageInfo
-from dotnet_pkg_info.build_commands import get_build_settings_and_commands
+from dotnet_pkg_info.build_commands import verify_and_merge
 import json
 
 
 def process_cli_args():
 
     cli_parser = argparse.ArgumentParser(prog='dotnet_pkg_info',
-                                         description='''Path to the package directory or a solution file or a project file''')
+                                         description='''Get build settings, Validates build settings''')
+
+    cli_parser.add_argument('package',
+                            help='Path to the package directory or a solution file or a project file')
 
     cli_parser.add_argument('--format',
                             choices=['json', 'text'],
@@ -29,15 +32,11 @@ def process_cli_args():
                             action='store_true',
                             help='Do not display target framework information')
 
-    cli_parser.add_argument('--pkg-dir',
+    cli_parser.add_argument('--build-settings',
                             required=False,
-                            help='Do not display configuration information')
+                            help='Validate and Merge build settings')
 
-    group = cli_parser.add_mutually_exclusive_group(required=True)
-
-    group.add_argument('--package',
-                       required=False,
-                       help='Path to the package directory or a solution file or a project file')
+    group = cli_parser.add_mutually_exclusive_group(required=False)
 
     group.add_argument('--src-file-types',
                        required=False,
@@ -57,9 +56,7 @@ def process_cli_args():
                        action='store_true',
                        help='Path to the package directory or a solution file or a project file')
 
-    group.add_argument('--build-commands',
-                       required=False,
-                       help='Get build commands')
+
 
     return cli_parser.parse_args()
 
@@ -103,7 +100,16 @@ if __name__ == '__main__':
     parser = process_cli_args()
     args = vars(parser)
 
-    if args['package']:
+    if args['build_settings'] and args['package']:
+        new_pkg_info = verify_and_merge(args['build_settings'], args['package'])
+        json.dump(new_pkg_info, sys.stdout)
+    elif args['src_file_types']:
+        json.dump(DotnetPackageInfo.DOTNET_SRC_FILE_TYPES, sys.stdout)
+    elif args['framework_types']:
+        json.dump(DotnetPackageInfo.DOTNET_FRAMEWORK_TYPES, sys.stdout)
+    elif args['proj_file_types']:
+        json.dump(DotnetPackageInfo.DOTNET_PROJ_FILE_TYPES, sys.stdout)
+    elif args['package']:
         dpi = DotnetPackageInfo()
         pkg_info = dpi.get_pkg_info(args['package'])
 
@@ -119,14 +125,5 @@ if __name__ == '__main__':
             json.dump(pkg_info, sys.stdout)
         else:
             pretty_print(pkg_info)
-
-    elif args['src_file_types']:
-        json.dump(DotnetPackageInfo.DOTNET_SRC_FILE_TYPES, sys.stdout)
-    elif args['framework_types']:
-        json.dump(DotnetPackageInfo.DOTNET_FRAMEWORK_TYPES, sys.stdout)
-    elif args['proj_file_types']:
-        json.dump(DotnetPackageInfo.DOTNET_PROJ_FILE_TYPES, sys.stdout)
-    elif args['build_commands']:
-        get_build_settings_and_commands(args['build_commands'], args['pkg_dir'])
 
 
