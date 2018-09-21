@@ -2,6 +2,7 @@
 import sys
 import argparse
 from dotnet_pkg_info.dotnet_pkg_info import DotnetPackageInfo
+from dotnet_pkg_info.build_commands import get_build_settings_and_commands
 import json
 
 
@@ -28,6 +29,10 @@ def process_cli_args():
                             action='store_true',
                             help='Do not display target framework information')
 
+    cli_parser.add_argument('--pkg-dir',
+                            required=False,
+                            help='Do not display configuration information')
+
     group = cli_parser.add_mutually_exclusive_group(required=True)
 
     group.add_argument('--package',
@@ -51,6 +56,10 @@ def process_cli_args():
                        default=False,
                        action='store_true',
                        help='Path to the package directory or a solution file or a project file')
+
+    group.add_argument('--build-commands',
+                       required=False,
+                       help='Get build commands')
 
     return cli_parser.parse_args()
 
@@ -117,5 +126,7 @@ if __name__ == '__main__':
         json.dump(DotnetPackageInfo.DOTNET_FRAMEWORK_TYPES, sys.stdout)
     elif args['proj_file_types']:
         json.dump(DotnetPackageInfo.DOTNET_PROJ_FILE_TYPES, sys.stdout)
+    elif args['build_commands']:
+        get_build_settings_and_commands(args['build_commands'], args['pkg_dir'])
 
 
