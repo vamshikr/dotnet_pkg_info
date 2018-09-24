@@ -5,15 +5,40 @@ import os.path as osp
 import xml.etree.ElementTree as ET
 import re
 from . import fileutil
+from .errors_warnings import DotnetPackageError
+from .errors_warnings import InvalidSolutionFile
 
 
 class DotnetPackage:
 
+    @classmethod
+    def is_valid(cls, pkg_dir):
+
+        # Check if it is a directory
+        # Check if it is a file with .sln or .proj extentions
+        # Check if it has permissions
+        # Check if there are .sln or .proj files
+        # TODO fill in
+        return True
+
     def __init__(self, pkg_dir):
-        self.sln_files = set()
-        self.proj_files = set()
+        self.pkg_dir = pkg_dir
+        self.sln_files = set()  # SLN file object
+        self.proj_files = set() # Proj file object
         self.errors = set()
         self.warnings = set()
+
+    def set_pkg_dir(self, pkg_dir):
+        self.pkg_dir = pkg_dir
+
+    def add_sln_file(self, sln_file_obj):
+        self.sln_files.add(sln_file_obj)
+
+    def add_proj_file(self, proj_file_obj):
+        self.sln_files.add(proj_file_obj)
+
+    def add_error(self, error):
+        self.errors.add(error)
 
     def to_json(self):
         pass
@@ -23,7 +48,7 @@ class SolutionFile:
     SLN_EXTENTION = '.sln'
 
     @classmethod
-    def is_valid(cls, proj_file, pkg_dir=None):
+    def is_valid(cls, sln_file, pkg_dir=None):
         #TODO fill in
         return True
 
@@ -36,9 +61,9 @@ class SolutionFile:
         self.pkg_dir = pkg_dir
         self.proj_files_hash = dict()
 
-    def _set_project_files(self):
+    def set_project_files(self):
 
-        with open(self.file_path) as fobj:
+        with open(osp.join(self.pkg_dir, self.sln_file)) as fobj:
             file_lines = [_line.strip('\n') for _line in fobj]
 
             proj_line_regex = re.compile(r'\s*Project\("{[^}]+}"\)\s*=\s*"[^"]+",\s*"(?P<project_file>.+[.](csproj|vbproj|fsproj))",\s*"{(?P<project_hash>[^}]+)}"')
@@ -188,3 +213,35 @@ class ProjectFile:
 
     def to_json(self):
         pass
+
+
+def main(package):
+
+    dpkg = DotnetPackage(package)
+    try:
+        DotnetPackage.is_valid(package)
+
+        if osp.isdir(package):
+            package = osp.abspath(package)
+            dpkg.set_pkg_dir(package)
+
+            sln_files = SolutionFile.get_sln_files(package)
+
+            if sln_files:
+                sln_file_objs = [SolutionFile(osp.relpath(_file, package)) for _file in sln_files]
+
+                for sln_obj in sln_file_objs:
+
+                    try:
+                        if SolutionFile.is_valid(sln_obj):
+                            sln_obj.set_project_files()
+                            
+
+                    except InvalidSolutionFile as err:
+                        dpkg.add_error(err)
+
+
+    except DotnetPackageError as err:
+        dpkg.add_error(err)
+
+    print(dpkg)
