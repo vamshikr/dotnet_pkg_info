@@ -1,12 +1,14 @@
-
-import json
+import sys
 import os.path as osp
 import xml.etree.ElementTree as ET
 import re
 from . import fileutil
-from .errors_warnings import DotnetPackageError
-from .errors_warnings import InvalidSolutionFile
 
+from .errors_warnings import DotnetPackageError
+from .errors_warnings import NotADotnetPackageError
+from .errors_warnings import InvalidSolutionFile
+from .errors_warnings import ProjectRequiresWindows
+from .errors_warnings import FileNotFound
 import pdb
 
 
@@ -19,9 +21,25 @@ class DotnetPackage:
     def is_valid(cls, pkg_dir):
 
         # Check if it is a directory
-        # Check if it is a file with .sln or .proj extentions
-        # Check if it has permissions
-        # Check if there are .sln or .proj files
+        if osp.isdir(pkg_dir):
+            # Check if there are .sln or .proj files
+            sln_files = SolutionFile.get_sln_files(pkg_dir)
+
+            if sln_files is None or len(sln_files) == 0:
+                proj_files = ProjectFile.get_project_files(pkg_dir)
+
+                if proj_files is None or len(proj_files) == 0:
+                    raise NotADotnetPackageError(pkg_dir)
+
+        else:
+            path, ext = osp.splitext(pkg_dir)
+
+            # Check if it is a file with .sln or .proj extentions
+            if ext != SolutionFile.SLN_EXTENTION and \
+                   ext not in ProjectFile.PROJECT_EXTENTION:
+                    raise NotADotnetPackageError(pkg_dir)
+            
+        # TODO: Check if it has permissions
         # TODO fill in
         return True
 
@@ -44,6 +62,9 @@ class DotnetPackage:
     def add_error(self, error):
         self.errors.add(error)
 
+    def add_warning(self, warning):
+        self.warnings.add(warning)
+
     def to_json(self):
         json_dict = dict()
 
@@ -51,10 +72,28 @@ class DotnetPackage:
             json_dict[DotnetPackage.SLN_FILES_TAG] = {
                 _file.get_path(): _file.get_project_files() for _file in self.sln_files
             }
-        
+
         json_dict[DotnetPackage.PROJ_FILES_TAG] = {
                 _file.get_path(): _file.to_json() for _file in self.proj_files
         }
+
+        if self.errors:
+            json_dict['errors'] = [
+                {
+                    'message': str(error),
+                    'code': error.code.name,
+                    'file': error.file_path
+                } for error in self.errors
+            ]
+
+        if self.warnings:
+            json_dict['warnings'] = [
+                {
+                    'message': str(warning),
+                    'code': warning.code.name,
+                    'file': warning.file_path
+                } for warning in self.warnings
+            ]
 
         return json_dict
 
@@ -185,6 +224,9 @@ class ProjectFile:
     def get_path(self):
         return self.proj_file
 
+    def get_abs_path(self):
+        return osp.join(self.pkg_dir, self.proj_file)
+
     def set_target_frameworks(self):
 
         proj_file = self.proj_file
@@ -207,13 +249,14 @@ class ProjectFile:
     def set_default_framework(self):
 
         if len(self.frameworks.intersection(ProjectFile.CORE_TARGET_FRAMEWORKS)):
+            for tmf in ProjectFile.CORE_TARGET_FRAMEWORKS:
+                if tmf in self.frameworks:
+                    self.default_framework = tmf
+                    break
+        else:
             self.default_framework = None
-
-        for tmf in ProjectFile.CORE_TARGET_FRAMEWORKS:
-            if tmf in self.frameworks:
-                self.default_framework = tmf
-                break
-
+            raise ProjectRequiresWindows(self.proj_file)
+            
     def set_default_configurations(self):
 
         if 'Debug' in self.configurations:
@@ -264,22 +307,36 @@ def main_isdir(package):
                             proj_file_obj = ProjectFile(proj_file,
                                                         osp.join(package,
                                                                  osp.dirname(sln_obj.get_path())))
-                            proj_file_obj.set_target_frameworks()
-                            proj_file_obj.set_build_configurations(sln_obj.get_configuration(proj_file))
-                            proj_file_obj.set_default_framework()
-                            proj_file_obj.set_default_configurations()
-                            dpkg.add_proj_file(proj_file_obj)
+
+                            if osp.isfile(proj_file_obj.get_abs_path()):
+                                try:
+                                    dpkg.add_proj_file(proj_file_obj)
+                                    proj_file_obj.set_target_frameworks()
+                                    proj_file_obj.set_build_configurations(sln_obj.get_configuration(proj_file))
+                                    proj_file_obj.set_default_configurations()
+                                    proj_file_obj.set_default_framework()
+
+                                except ProjectRequiresWindows as err:
+                                    dpkg.add_warning(err)
+                            else:
+                                dpkg.add_error(FileNotFound(proj_file_obj.get_path()))
 
                 except InvalidSolutionFile as err:
                     dpkg.add_error(err)
         else: # No solution files
 
             for proj_file in ProjectFile.get_project_files(package):
-                proj_file_obj = ProjectFile(osp.relpath(proj_file, package),
-                                            package)
-                proj_file_obj.set_target_frameworks()
-                proj_file_obj.set_default_framework()
-                dpkg.add_proj_file(proj_file_obj)
+                proj_file_obj = ProjectFile(osp.relpath(proj_file, package), package)
+
+                if osp.isfile(proj_file_obj.get_abs_path()):
+                    try:
+                        dpkg.add_proj_file(proj_file_obj)
+                        proj_file_obj.set_target_frameworks()
+                        proj_file_obj.set_default_framework()
+                    except ProjectRequiresWindows as err:
+                        dpkg.add_warning(err)
+                else:
+                    dpkg.add_error(FileNotFound(proj_file_obj.get_path()))
 
     except DotnetPackageError as err:
         dpkg.add_error(err)
@@ -305,11 +362,17 @@ def main_slnfile(sln_file):
                 proj_file_obj = ProjectFile(proj_file,
                                             osp.join(pkg_dir,
                                                      osp.dirname(sln_obj.get_path())))
-                proj_file_obj.set_target_frameworks()
-                proj_file_obj.set_build_configurations(sln_obj.get_configuration(proj_file))
-                proj_file_obj.set_default_framework()
-                proj_file_obj.set_default_configurations()
-                dpkg.add_proj_file(proj_file_obj)
+                if osp.isfile(proj_file_obj.get_abs_path()):
+                    try:
+                        dpkg.add_proj_file(proj_file_obj)
+                        proj_file_obj.set_target_frameworks()
+                        proj_file_obj.set_build_configurations(sln_obj.get_configuration(proj_file))
+                        proj_file_obj.set_default_configurations()
+                        proj_file_obj.set_default_framework()
+                    except ProjectRequiresWindows as err:
+                        dpkg.add_warning(err)
+                else:
+                    dpkg.add_error(FileNotFound(proj_file_obj.get_path()))
 
     except InvalidSolutionFile as err:
         dpkg.add_error(err)
@@ -329,9 +392,15 @@ def main_projfile(proj_file):
 
     try:
         proj_file_obj = ProjectFile(osp.relpath(proj_file, pkg_dir), pkg_dir)
-        proj_file_obj.set_target_frameworks()
-        proj_file_obj.set_default_framework()
-        dpkg.add_proj_file(proj_file_obj)
+        if osp.isfile(proj_file_obj.get_abs_path()):
+            try:
+                dpkg.add_proj_file(proj_file_obj)
+                proj_file_obj.set_target_frameworks()
+                proj_file_obj.set_default_framework()
+            except ProjectRequiresWindows as err:
+                dpkg.add_warning(err)
+        else:
+            dpkg.add_error(FileNotFound(proj_file_obj.get_path()))
 
     except DotnetPackageError as err:
         dpkg.add_error(err)
@@ -341,14 +410,21 @@ def main_projfile(proj_file):
 
 def main(package):
 
-    if osp.isdir(package):
-        return main_isdir(package)
-    else:
-        path, ext = osp.splitext(package)
+    try:
+        DotnetPackage.is_valid(package)
 
-        if ext == SolutionFile.SLN_EXTENTION:
-            return main_slnfile(package)
-        elif ext in ProjectFile.PROJECT_EXTENTION:
-            return main_projfile(package)
+        if osp.isdir(package):
+            return main_isdir(package)
         else:
-            raise InvalidSolutionFile()
+            path, ext = osp.splitext(package)
+
+            if ext == SolutionFile.SLN_EXTENTION:
+                return main_slnfile(package)
+            elif ext in ProjectFile.PROJECT_EXTENTION:
+                return main_projfile(package)
+            else:
+                pass
+    except DotnetPackageError as err:
+        dpkg = DotnetPackage(package)
+        dpkg.add_error(NotADotnetPackageError(package))
+        return dpkg

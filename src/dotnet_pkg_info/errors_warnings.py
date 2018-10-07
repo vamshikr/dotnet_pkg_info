@@ -14,11 +14,13 @@ class ErrorCodes(Enum):
     INVALID_FILE_EXTENSION = 7
     FILE_PERMISSIONS_ERROR = 8
     GENERIC_ERROR = 9
+    REQUIRES_WINDOWS = 10
+    
 
 class DotnetPackageError(Exception):
 
     def __init__(self, code=ErrorCodes.GENERIC_ERROR, file_path=None):
-        super(Exception, self).__init__()
+        Exception.__init__(self)
         self.code = code
         self.file_path = file_path
 
@@ -29,7 +31,7 @@ class DotnetPackageError(Exception):
 class NotADotnetPackageError(DotnetPackageError):
 
     def __init__(self, file_path):
-        super(DotnetPackageError, self).__init__(ErrorCodes.INVALID_PACKAGE,  file_path)
+        DotnetPackageError.__init__(self, ErrorCodes.INVALID_PACKAGE,  file_path)
 
     def __str__(self):
         return 'No solution or project files found in the directory: {0}'.format(self.file_path)
@@ -38,7 +40,7 @@ class NotADotnetPackageError(DotnetPackageError):
 class InvalidSolutionFile(DotnetPackageError):
 
     def __init__(self, file_path):
-        super(DotnetPackageError, self).__init__(ErrorCodes.INVALID_SLN_FILE,  file_path)
+        DotnetPackageError.__init__(self, ErrorCodes.INVALID_SLN_FILE,  file_path)
 
     def __str__(self):
         return 'Invalid solution file: {0}'.format(self.file_path)
@@ -47,7 +49,7 @@ class InvalidSolutionFile(DotnetPackageError):
 class FileNotFound(DotnetPackageError):
 
     def __init__(self, file_path):
-        super(DotnetPackageError, self).__init__(ErrorCodes.FILE_NOT_FOUND,  file_path)
+        DotnetPackageError.__init__(self, ErrorCodes.FILE_NOT_FOUND,  file_path)
 
     def __str__(self):
         return 'File in the solution file not found: {0}'.format(self.file_path)
@@ -56,7 +58,7 @@ class FileNotFound(DotnetPackageError):
 class InvalidProjectFile(DotnetPackageError):
 
     def __init__(self, file_path):
-        super(DotnetPackageError, self).__init__(ErrorCodes.INVALID_PROJECT_FILE,  file_path)
+        DotnetPackageError.__init__(self, ErrorCodes.INVALID_PROJECT_FILE,  file_path)
 
     def __str__(self):
         return 'Invalid project file: {0}'.format(self.file_path)
@@ -65,7 +67,7 @@ class InvalidProjectFile(DotnetPackageError):
 class InvalidTargetFramework(DotnetPackageError):
 
     def __init__(self, file_path):
-        super(DotnetPackageError, self).__init__(ErrorCodes.INVALID_TARGET_FRAME_WORK,  file_path)
+        DotnetPackageError.__init__(self, ErrorCodes.INVALID_TARGET_FRAME_WORK,  file_path)
 
     def __str__(self):
         return 'Invalid target framework: {0}'.format(self.file_path)
@@ -74,7 +76,7 @@ class InvalidTargetFramework(DotnetPackageError):
 class InvalidBuildConfiguration(DotnetPackageError):
 
     def __init__(self, file_path):
-        super(DotnetPackageError, self).__init__(ErrorCodes.INVALID_BUILD_CONFIGURATION,  file_path)
+        DotnetPackageError.__init__(self, ErrorCodes.INVALID_BUILD_CONFIGURATION,  file_path)
 
     def __str__(self):
         return 'Invalid build configuration: {0}'.format(self.file_path)
@@ -83,7 +85,7 @@ class InvalidBuildConfiguration(DotnetPackageError):
 class InvalidFileExtension(DotnetPackageError):
 
     def __init__(self, file_path):
-        super(DotnetPackageError, self).__init__(ErrorCodes.INVALID_FILE_EXTENSION,  file_path)
+        DotnetPackageError.__init__(self, ErrorCodes.INVALID_FILE_EXTENSION,  file_path)
 
     def __str__(self):
         return 'Invalid .NET file extension: {0}'.format(self.file_path)
@@ -92,8 +94,17 @@ class InvalidFileExtension(DotnetPackageError):
 class FilePermissionsError(DotnetPackageError):
 
     def __init__(self, file_path):
-        super(DotnetPackageError, self).__init__(ErrorCodes.FILE_PERMISSIONS_ERROR,  file_path)
+        DotnetPackageError.__init__(self, ErrorCodes.FILE_PERMISSIONS_ERROR,  file_path)
 
     def __str__(self):
         return 'File permission error: {0}'.format(self.file_path)
+
+
+class ProjectRequiresWindows(DotnetPackageError):
+
+    def __init__(self, file_path):
+        DotnetPackageError.__init__(self, ErrorCodes.REQUIRES_WINDOWS,  file_path)
+
+    def __str__(self):
+        return 'Project requires windows to build: {0}'.format(self.file_path)
 
