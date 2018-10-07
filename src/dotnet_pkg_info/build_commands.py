@@ -51,7 +51,7 @@ def get_build_settings(json_file, pkg_dir):
 
     build_settings = dict()
 
-    if len(pkg_info['sln_files'].keys()) == 0:
+    if 'sln_files' not in pkg_info or len(pkg_info['sln_files'].keys()) == 0:
 
         build_settings = copy.deepcopy(pkg_info)
 
@@ -62,18 +62,21 @@ def get_build_settings(json_file, pkg_dir):
 
                 if 'default_framework' not in proj_info:
                     build_settings['proj_files'][proj_file]['nobuild'] = "true"
+                else:
+                    build_settings['proj_files'][proj_file]['framework'] = build_settings['proj_files'][proj_file][
+                        'default_framework']
 
-                # if 'frameworks' in build_settings['proj_files'][proj_file]:
-                #     del(build_settings['proj_files'][proj_file]['frameworks'])
-                #
-                # if 'default_framework' in build_settings['proj_files'][proj_file]:
-                #     del(build_settings['proj_files'][proj_file]['default_framework'])
-                #
-                # if 'configurations' in build_settings['proj_files'][proj_file]:
-                #     del(build_settings['proj_files'][proj_file]['configurations'])
-                #
-                # if 'default_configuration' in build_settings['proj_files'][proj_file]:
-                #     del(build_settings['proj_files'][proj_file]['default_configuration'])
+                if 'frameworks' in build_settings['proj_files'][proj_file]:
+                    del(build_settings['proj_files'][proj_file]['frameworks'])
+
+                if 'default_framework' in build_settings['proj_files'][proj_file]:
+                    del(build_settings['proj_files'][proj_file]['default_framework'])
+
+                if 'configurations' in build_settings['proj_files'][proj_file]:
+                    del(build_settings['proj_files'][proj_file]['configurations'])
+
+                if 'default_configuration' in build_settings['proj_files'][proj_file]:
+                    del(build_settings['proj_files'][proj_file]['default_configuration'])
 
     elif len(pkg_info['sln_files'].keys()) == 1:
         build_settings = copy.deepcopy(pkg_info)
@@ -90,9 +93,6 @@ def get_build_settings(json_file, pkg_dir):
                     build_settings['sln_files'][sln_file].remove(proj_file)
                 else:
                     build_settings['proj_files'][proj_file]['framework'] = build_settings['proj_files'][proj_file]['default_framework']
-
-                build_settings['proj_files'][proj_file]['configuration'] = build_settings['proj_files'][proj_file][
-                    'default_configuration']
 
                 if 'frameworks' in build_settings['proj_files'][proj_file]:
                     del(build_settings['proj_files'][proj_file]['frameworks'])
@@ -122,34 +122,41 @@ def get_build_commands(build_settings, pkg_dir):
 
     with open('build.sh', 'w') as fp:
         print('#! /usr/bin/env bash\n', file=fp)
-
+        print('set -x\n', file=fp)
         print('cd {0}'.format(pkg_dir), file=fp)
 
-        if len(build_settings['sln_files'].keys()) == 0:
-            for proj_file in build_settings['proj_files'].keys():
+        if 'sln_files' not in build_settings or len(build_settings['sln_files'].keys()) == 0:
+            proj_files = list(build_settings['proj_files'].keys())
+
+            for proj_file in proj_files:
                 proj_info = build_settings['proj_files'][proj_file]
 
                 if 'nobuild' not in proj_info:
                     cmd = 'dotnet build {0}  --framework {1} --configuration {2}'.format(proj_file,
                                                                                          proj_info['framework'],
-                                                                                         proj_info['configuration'])
-                    print("(\n\t{0}\n)\n\n".format(cmd), file=fp)
+                                                                                         proj_info.get('configuration',
+                                                                                                       'Debug'))
+                    ampamp = '&&' if (proj_files.index(proj_file) < len(proj_files) - 1) else ''
+                    print("(\n\t{0}\n){1}\n\n".format(cmd, ampamp), file=fp)
 
         elif len(build_settings['sln_files'].keys()) == 1:
             sln_file = list(build_settings['sln_files'].keys())[0]
-            for proj_file in build_settings['sln_files'][sln_file]:
+            proj_files = build_settings['sln_files'][sln_file]
+
+            for proj_file in proj_files:
                 proj_info = build_settings['proj_files'][proj_file]
                 if 'nobuild' not in proj_info:
                     cmd = 'dotnet build {0}  --framework {1} --configuration {2}'.format(proj_file,
                                                                                          proj_info['framework'],
-                                                                                         proj_info['configuration'])
-                    print("(\n\t{0}\n)\n\n".format(cmd), file=fp)
+                                                                                         proj_info.get('configuration',
+                                                                                                       'Debug'))
+                    ampamp = '&&' if (proj_files.index(proj_file) < len(proj_files) - 1) else ''
+                    print("(\n\t{0}\n){1}\n\n".format(cmd, ampamp), file=fp)
 
 
 
 def get_build_settings_and_commands(json_file, pkg_dir):
     build_settings = get_build_settings(json_file, pkg_dir)
-
     get_build_commands(build_settings, pkg_dir)
 
 
