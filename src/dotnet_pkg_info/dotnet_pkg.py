@@ -1,4 +1,3 @@
-import sys
 import os.path as osp
 import xml.etree.ElementTree as ET
 import re
@@ -9,13 +8,143 @@ from .errors_warnings import NotADotnetPackageError
 from .errors_warnings import InvalidSolutionFile
 from .errors_warnings import ProjectRequiresWindows
 from .errors_warnings import FileNotFound
-import pdb
 
 
 class DotnetPackage:
 
     SLN_FILES_TAG = 'sln_files'
     PROJ_FILES_TAG = 'proj_files'
+
+    CORE_TARGET_FRAMEWORKS = ['netstandard1.0',
+                              'netstandard1.1',
+                              'netstandard1.2',
+                              'netstandard1.3',
+                              'netstandard1.4',
+                              'netstandard1.5',
+                              'netstandard1.6',
+                              'netstandard2.0',
+                              'netcoreapp1.0',
+                              'netcoreapp1.1',
+                              'netcoreapp2.0',
+                              'netcoreapp2.1',
+                              'uap',
+                              'uap10.0']
+
+    WINDOWS_TARGET_FRAMEWORKS = []
+
+    DOTNET_SRC_FILE_TYPES = {
+        '.cs': {
+            'description': 'C# source files',
+            'windows_only': False
+        },
+        '.vb': {
+            'description': 'Visual Basics source files',
+            "windows_only": True
+        },
+        '.fs': {
+            'description': 'F# source files',
+            'windows_only': True
+        }
+    }
+
+    DOTNET_PROJ_FILE_TYPES = {
+        '.csproj': {
+            'description': 'csharp project file'
+        },
+        '.vbproj': {
+            'description': 'Visual Basics project files'
+        },
+        '.fsproj': {
+            'description': 'fsharp project file'
+        }
+    }
+
+    DOTNET_FRAMEWORK_TYPES = {
+        ".NET Standard": {
+            "tf_moniker": [
+                "netstandard1.0",
+                "netstandard1.1",
+                "netstandard1.2",
+                "netstandard1.3",
+                "netstandard1.4",
+                "netstandard1.5",
+                "netstandard1.6",
+                "netstandard2.0",
+                "netcoreapp1.0",
+                "netcoreapp1.1",
+                "netcoreapp2.0",
+                "netcoreapp2.1"
+            ],
+            "windows_only": False
+        },
+        ".NET Core": {
+            "tf_moniker": [
+                "netcoreapp1.0",
+                "netcoreapp1.1",
+                "netcoreapp2.0",
+                "netcoreapp2.1"
+            ],
+            "windows_only": False
+        },
+        ".NET Framework": {
+            "tf_moniker": [
+                "net11",
+                "net20",
+                "net35",
+                "net40",
+                "net403",
+                "net45",
+                "net451",
+                "net452",
+                "net46",
+                "net461",
+                "net462",
+                "net47",
+                "net471",
+                "net472"
+            ],
+            "windows_only": True
+        },
+        "Windows Store": {
+            "tf_moniker": [
+                "netcore [netcore45]",
+                "netcore45 [win] [win8]",
+                "netcore451 [win81]"
+            ],
+            "windows_only": True
+        },
+        ".NET Micro Framework": {
+            "tf_moniker": [
+                "netmf"
+            ],
+            "windows_only": True
+        },
+        "Silverlight": {
+            "tf_moniker": [
+                "sl4",
+                "sl5"
+            ],
+            "windows_only": True
+        },
+        "Windows Phone": {
+            "tf_moniker": [
+                "wp [wp7]",
+                "wp7",
+                "wp75",
+                "wp8",
+                "wp81",
+                "wpa81"
+            ],
+            "windows_only": True
+        },
+        "Universal Windows Platform": {
+            "tf_moniker": [
+                "uap",
+                "uap10.0"
+            ],
+            "windows_only": False
+        }
+    }
 
     @classmethod
     def is_valid(cls, pkg_dir):
@@ -38,7 +167,7 @@ class DotnetPackage:
             if ext != SolutionFile.SLN_EXTENTION and \
                    ext not in ProjectFile.PROJECT_EXTENTION:
                     raise NotADotnetPackageError(pkg_dir)
-            
+
         # TODO: Check if it has permissions
         # TODO fill in
         return True
@@ -244,7 +373,7 @@ class ProjectFile:
         else:
             self.default_framework = None
             raise ProjectRequiresWindows(self.proj_file)
-            
+
     def set_default_configurations(self):
 
         if 'Debug' in self.configurations:

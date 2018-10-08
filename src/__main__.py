@@ -3,18 +3,20 @@ import sys
 import argparse
 from dotnet_pkg_info import dotnet_pkg
 from dotnet_pkg_info import merge
+from dotnet_pkg_info import build_commands
 import json
-
 
 
 def process_cli_args():
 
     cli_parser = argparse.ArgumentParser(prog='dotnet_pkg_info',
-                                         description='''Get build settings, Validates build settings''')
+                                         description='''Get package information, build settings and build commands''')
 
     cli_parser.add_argument('package',
+                            default=None,
+                            nargs='?',
                             help='Path to the package directory or a solution file or a project file')
-
+    
     cli_parser.add_argument('--format',
                             choices=['json', 'text'],
                             default='json',
@@ -34,6 +36,10 @@ def process_cli_args():
                             help='Do not display target framework information')
 
     cli_parser.add_argument('--build-settings',
+                            required=False,
+                            help='Validate and Merge build settings')
+
+    cli_parser.add_argument('--build-commands',
                             required=False,
                             help='Validate and Merge build settings')
 
@@ -99,15 +105,17 @@ if __name__ == '__main__':
     parser = process_cli_args()
     args = vars(parser)
 
+    if args['build_commands']:
+        build_commands.main(args['build_commands'], args['format'] == 'json')
     if args['build_settings'] and args['package']:
         new_pkg_info = merge.main(args['build_settings'], args['package'])
         json.dump(new_pkg_info, sys.stdout)
     elif args['src_file_types']:
-        json.dump(DotnetPackageInfo.DOTNET_SRC_FILE_TYPES, sys.stdout)
+        json.dump(dotnet_pkg.DotnetPackage.DOTNET_SRC_FILE_TYPES, sys.stdout)
     elif args['framework_types']:
-        json.dump(DotnetPackageInfo.DOTNET_FRAMEWORK_TYPES, sys.stdout)
+        json.dump(dotnet_pkg.DotnetPackage.DOTNET_FRAMEWORK_TYPES, sys.stdout)
     elif args['proj_file_types']:
-        json.dump(DotnetPackageInfo.DOTNET_PROJ_FILE_TYPES, sys.stdout)
+        json.dump(dotnet_pkg.DotnetPackage.DOTNET_PROJ_FILE_TYPES, sys.stdout)
     elif args['package']:
         dpi = dotnet_pkg.main(args['package'])
 
