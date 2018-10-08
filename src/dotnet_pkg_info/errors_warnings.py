@@ -25,7 +25,7 @@ class DotnetPackageError(Exception):
         self.file_path = file_path
 
     def to_json(self):
-        return json.dumps({'code': self.code.name, 'file': self.file_path, 'message': str(self)})
+        return {'code': self.code.name, 'file': self.file_path, 'message': str(self)}
 
 
 class NotADotnetPackageError(DotnetPackageError):

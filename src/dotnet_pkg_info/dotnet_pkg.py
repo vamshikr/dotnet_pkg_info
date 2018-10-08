@@ -78,22 +78,10 @@ class DotnetPackage:
         }
 
         if self.errors:
-            json_dict['errors'] = [
-                {
-                    'message': str(error),
-                    'code': error.code.name,
-                    'file': error.file_path
-                } for error in self.errors
-            ]
+            json_dict['errors'] = [error.to_json() for error in self.errors]
 
         if self.warnings:
-            json_dict['warnings'] = [
-                {
-                    'message': str(warning),
-                    'code': warning.code.name,
-                    'file': warning.file_path
-                } for warning in self.warnings
-            ]
+            json_dict['warnings'] = [warning.to_json() for warning in self.warnings]
 
         return json_dict
 
@@ -244,7 +232,7 @@ class ProjectFile:
                     self.frameworks = {_elm.strip() for _elm in elem.text.split(';')}
 
     def set_build_configurations(self, conf_list):
-        self.configurations = list(conf_list)
+        self.configurations = conf_list
 
     def set_default_framework(self):
 
@@ -270,7 +258,7 @@ class ProjectFile:
         }
 
         if self.configurations:
-            json_dict['configurations'] = list(self.configurations),
+            json_dict['configurations'] = list(self.configurations)
 
         if self.default_framework:
             json_dict['default_framework'] = self.default_framework
